@@ -70,7 +70,7 @@ plot4<-FeatureScatter(data.d1, feature1 = "nFeature_RNA", feature2 = "percent.mt
 plot3+plot4
 ```
 
-```{violinplot}
+```{#violinplot}
 VlnPlot(data.huh7, features = "nFeature_RNA", pt.size = 0.1) + NoLegend()
 VlnPlot(data.huh7, features = "nCount_RNA", pt.size = 0.1) + NoLegend()
 VlnPlot(data.huh7, features = "percent.mt", pt.size = 0.1) + NoLegend()
@@ -107,11 +107,8 @@ alldata <- SCTransform(alldata, method = "glmGamPoi", vars.to.regress="percent.m
 
 ```
 
-```{violinplot}
+```{#violinplot}
 VlnPlot(alldata, features = "nCount_RNA", pt.size = 0.1) + NoLegend()
-```
-
-```{r}
 VlnPlot(alldata, features = "percent.mt", pt.size = 0.1) + NoLegend()
 VlnPlot(alldata, features = "nFeature_RNA", pt.size = 0.1) + NoLegend()
 VlnPlot(alldata, features = "ACTB", pt.size = 0.1) + NoLegend()

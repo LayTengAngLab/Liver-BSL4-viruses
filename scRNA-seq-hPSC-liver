@@ -1,1 +1,332 @@
+---
+title: "Liver time course"
+#https://satijalab.org/seurat/archive/v3.1/cell_cycle_vignette.html
+---
+
+```{r}
+library (Seurat)
+library (ggplot2)
+library (patchwork)
+library (dplyr)
+library(hdf5r)
+
+```
+
+```{#Load datasets}
+h1 <- Read10X_h5("/home/ubuntu/data/SC03_filtered_feature_bc_matrix.h5")
+d1 <- Read10X_h5("/home/ubuntu/data/SC02_filtered_feature_bc_matrix.h5")
+d2 <- Read10X_h5("/home/ubuntu/data/SC04_filtered_feature_bc_matrix.h5")
+d3 <- Read10X_h5("/home/ubuntu/data/SC05_filtered_feature_bc_matrix.h5")
+d6 <- Read10X_h5("/home/ubuntu/data/SC06_filtered_feature_bc_matrix.h5")
+d12 <- Read10X_h5("/home/ubuntu/data/SC07_filtered_feature_bc_matrix.h5")
+d18 <- Read10X_h5("/home/ubuntu/data/SC10_filtered_feature_bc_matrix.h5")
+d19 <- Read10X_h5("/home/ubuntu/data/SC12_filtered_feature_bc_matrix.h5")
+d20 <- Read10X_h5("/home/ubuntu/data/SC14_filtered_feature_bc_matrix.h5")
+hepg2 <- Read10X_h5("/home/ubuntu/data/SC08_filtered_feature_bc_matrix.h5")
+huh7 <- Read10X_h5("/home/ubuntu/data/SC09_filtered_feature_bc_matrix.h5")
+phh <- Read10X_h5("/home/ubuntu/data/SC11_filtered_feature_bc_matrix.h5")
+d18_2d_sel2 <- Read10X_h5("/home/ubuntu/data/SC18_filtered_feature_bc_matrix.h5")
+phh6d<-Read10X_h5("/home/ubuntu/data/SC19_filtered_feature_bc_matrix.h5")
+```
+
+```{#Create objects}
+data.h1 <- CreateSeuratObject(h1, project = "h1", min.cells = 5, min.features = 200)
+data.d1 <- CreateSeuratObject(d1, project = "d1", min.cells = 5, min.features = 200)
+data.d2 <- CreateSeuratObject(d2, project = "d2", min.cells = 5, min.features = 200)
+data.d3 <- CreateSeuratObject(d3, project = "d3", min.cells = 5, min.features = 200)
+data.d6 <- CreateSeuratObject(d6, project = "d6", min.cells = 5, min.features = 200)
+data.d12 <- CreateSeuratObject(d12, project = "d12", min.cells = 5, min.features = 200)
+data.d18 <- CreateSeuratObject(d18, project = "d18", min.cells = 5, min.features = 200)
+data.d19 <- CreateSeuratObject(d19, project = "d19", min.cells = 5, min.features = 200)
+data.d20 <- CreateSeuratObject(d20, project = "d20", min.cells = 5, min.features = 200)
+data.hepg2 <- CreateSeuratObject(hepg2, project = "hepg2", min.cells = 5, min.features = 200)
+data.huh7 <- CreateSeuratObject(huh7, project = "huh7", min.cells = 5, min.features = 200)
+data.phh <- CreateSeuratObject(phh, project = "phh", min.cells = 5, min.features = 200)
+data.d18_2d_sel2 <- CreateSeuratObject(d18_2d_sel2, project = "d18_2d_sel2", min.cells = 3, min.features = 200)
+data.phh6d <- CreateSeuratObject(phh6d, project = "phh6d", min.cells = 5, min.features = 200)
+
+```
+
+```{#count mito}
+data.h1[["percent.mt"]] <- PercentageFeatureSet(data.h1, pattern = "^MT-")
+data.d1[["percent.mt"]] <- PercentageFeatureSet(data.d1, pattern = "^MT-")
+data.d2[["percent.mt"]] <- PercentageFeatureSet(data.d2, pattern = "^MT-")
+data.d3[["percent.mt"]] <- PercentageFeatureSet(data.d3, pattern = "^MT-")
+data.d6[["percent.mt"]] <- PercentageFeatureSet(data.d6, pattern = "^MT-")
+data.d12[["percent.mt"]] <- PercentageFeatureSet(data.d12, pattern = "^MT-")
+data.d18[["percent.mt"]] <- PercentageFeatureSet(data.d18, pattern = "^MT-")
+data.d19[["percent.mt"]] <- PercentageFeatureSet(data.d19, pattern = "^MT-")
+data.d20[["percent.mt"]] <- PercentageFeatureSet(data.d20, pattern = "^MT-")
+data.hepg2[["percent.mt"]] <- PercentageFeatureSet(data.hepg2, pattern = "^MT-")
+data.huh7[["percent.mt"]] <- PercentageFeatureSet(data.huh7, pattern = "^MT-")
+data.phh[["percent.mt"]] <- PercentageFeatureSet(data.phh, pattern = "^MT-")
+data.d18_2d_sel2[["percent.mt"]] <- PercentageFeatureSet(data.d18_2d_sel2, pattern = "^MT-")
+data.phh6d[["percent.mt"]] <- PercentageFeatureSet(data.phh6d, pattern = "^MT-")
+```
+
+```{#feature scatter}
+plot3<-FeatureScatter(data.d1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", pt.size = 0.1)
+plot4<-FeatureScatter(data.d1, feature1 = "nFeature_RNA", feature2 = "percent.mt", pt.size = 0.1)
+plot3+plot4
+```
+
+```{violinplot}
+VlnPlot(data.huh7, features = "nFeature_RNA", pt.size = 0.1) + NoLegend()
+VlnPlot(data.huh7, features = "nCount_RNA", pt.size = 0.1) + NoLegend()
+VlnPlot(data.huh7, features = "percent.mt", pt.size = 0.1) + NoLegend()
+
+```
+
+```{#Filter}
+data.h1 <- subset(data.h1, subset = nFeature_RNA > 3750 & nFeature_RNA < 9000 & percent.mt <10 & percent.mt >2.5  & nCount_RNA < 65000)
+data.d1  <- subset(data.d1 , subset = nFeature_RNA > 3500 & nFeature_RNA < 9000 & percent.mt <10 & percent.mt >2 & nCount_RNA < 62500 & nCount_RNA > 10000)
+data.d2  <- subset(data.d2 , subset = nFeature_RNA > 3000 & nFeature_RNA < 9000 & percent.mt <10 & percent.mt >2.5 & nCount_RNA < 50000 & nCount_RNA > 10000)
+data.d3  <- subset(data.d3 , subset = nFeature_RNA > 3750 & nFeature_RNA < 9500 & percent.mt <7.5 & percent.mt >2.5 & nCount_RNA < 60000 & nCount_RNA > 10000)
+data.d6  <- subset(data.d6 , subset = nFeature_RNA > 4000 & nFeature_RNA < 9500 & percent.mt <7.5 & percent.mt >3 & nCount_RNA < 75000 & nCount_RNA < 150000)
+data.d12  <- subset(data.d12 , subset = nFeature_RNA > 5000 & nFeature_RNA < 9500 & percent.mt <11 & percent.mt >0 & nCount_RNA < 100000)
+data.d18 <- subset(data.d18, subset = nFeature_RNA > 2000 & nFeature_RNA < 6500 & percent.mt <7.5 & percent.mt >0 & nCount_RNA < 40000)
+data.d19 <- subset(data.d19, subset = nFeature_RNA > 2500 & nFeature_RNA < 7500 & percent.mt <10 & percent.mt >0 & nCount_RNA<50000 & nCount_RNA>12500)
+data.d20  <- subset(data.d20 , subset = nFeature_RNA > 3000 & nFeature_RNA < 9000 & percent.mt <10 & percent.mt >0 & nCount_RNA<90000)
+data.hepg2 <- subset(data.hepg2, subset = nFeature_RNA > 3750 & nFeature_RNA < 10000 & percent.mt <20 & percent.mt >8 & nCount_RNA < 75000)
+data.huh7 <- subset(data.huh7, subset = nFeature_RNA > 3000 & nFeature_RNA < 9500 & percent.mt <15 & percent.mt >5  & nCount_RNA < 65000)
+data.phh <- subset(data.phh, subset = nFeature_RNA > 2500 & nFeature_RNA < 7000 & percent.mt <30 & percent.mt >10 & nCount_RNA < 65000)
+data.d18_2d_sel2 <- subset(data.d18_2d_sel2, subset = nFeature_RNA > 750 & nFeature_RNA < 3000 & percent.mt <10 & percent.mt >0 & nCount_RNA>1000 & nCount_RNA<8000)
+data.phh6d <- subset(data.phh6d, subset = nFeature_RNA > 900 & nFeature_RNA < 1300 & percent.mt <15 & percent.mt >6 & nCount_RNA < 20000)
+
+```
+
+```{#Merge all data}
+alldata <- merge(data.h1, c(data.d1,data.d2,data.d3,data.d6, data.d12,data.d18, data.hepg2, data.huh7, data.phh, data.d18_2d_sel2, data.phh6d), add.cell.ids=c("h1","d1","d2","d3","d6","d12","d18","hepg2","huh7","phh","d20sel","phh6d"))
+alldata <- merge(data.h1, c(data.d1,data.d2,data.d3,data.d6), add.cell.ids=c("h1","d1","d2","d3","d6"))
+```
+
+```{#SCT each object}
+alldata <- PercentageFeatureSet(alldata, pattern = "^MT-", col.name = "percent.mt")
+#alldata[["percent.mt"]] <- PercentageFeatureSet(alldata, pattern = "^MT-")
+alldata <- SCTransform(alldata, method = "glmGamPoi", vars.to.regress="percent.mt",verbose = FALSE)
+
+```
+
+```{violinplot}
+VlnPlot(alldata, features = "nCount_RNA", pt.size = 0.1) + NoLegend()
+```
+
+```{r}
+VlnPlot(alldata, features = "percent.mt", pt.size = 0.1) + NoLegend()
+VlnPlot(alldata, features = "nFeature_RNA", pt.size = 0.1) + NoLegend()
+VlnPlot(alldata, features = "ACTB", pt.size = 0.1) + NoLegend()
+```
+
+```{#Dimension reduction}
+alldata <- RunPCA(alldata, npcs = 100, ndims.print = 1:5, nfeatures.print = 5)
+```
+
+```{elbowplot}
+ElbowPlot(alldata)
+```
+
+```{FindNeighbor, FindCluster, RunUMAP}
+alldata <- FindNeighbors(alldata, dims = 1:15) #avoid this step if i just want original idents for analysis
+alldata <- FindClusters(alldata, resolution = 0.2)
+alldata <- RunUMAP(alldata, dims = 1:15)
+
+DimPlot(alldata, reduction = "umap")
+DimPlot(alldata, reduction = "umap", cols=c("#808080","#ffd500", "#ffa26b", "#ff6b7e","#ff0000","#dd7e28","#b92f2f","#d69a5e","#b65708","#d65e5e","#11b461","#72bcd4","#654321","#654321"))
+
+levels(alldata)
+levels(alldata)<-c("h1","d1","d2","d3","d6")
+
+DimPlot(alldata, reduction = "umap", cols=c("#808080","#ffd500", "#ffa26b","#ff6b7e","#ff0000"))
+ggsave("/home/rstudio/livertimecourse_D1-6_umap.tiff", height = 7, width = 10)
+
+
+DimPlot(alldata, reduction = "umap", cols=c("#808080","#ffd500", "#ffa26b", "#ff6b7e","#ff0000","#dd7e28","#b92f2f","#b65708","#72bcd4","#11b461","#654321","#d69a5e"), pt.size=1)
+
+levels(alldata)
+levels(alldata)<-c("h1","d1","d2","d3","d6","d12","d18","d18_2d_sel2","hepg2","huh7","phh","phh6d")
+
+alldata <- RenameIdents(object = alldata, `0` = "hPSC-hep1", `1` = "hPSC", `2` = "d2 Definitive-endoderm",`3` = "Huh7", `4` = "d1 Primitive-streak", `5` = "d6 Liver-bud",`6` = "hPSC-hep2", `7` = "Primary-Hep", `8` = "HepG2",`9` = "hPSC-hep3", `10` = "d12 hPSC-hep", `11` = "d3 Posterior-foregut", `12` = "hPSC-hep4")
+
+# Rename classes.
+alldata <- RenameIdents(object = alldata, `0` = "hPSC-hep1", `1` = "hPSC", `2` = "hPSC-hep2",`3` = "d2 Definitive-endoderm", `4` = "Huh7", `5` = "d1 Primitive-streak",`6` = "d6 Liver-bud", `7` = "hPSC-hep3", `8` = "Primary-Hep",`9` = "HepG2", `10` = "hPSC-hep4", `11` = "d12 hPSC-hep", `12` = "d3 Posterior-foregut", `13` = "hPSC-hep4")
+levels(alldata) <- c("hPSC", "d1 Primitive-streak", "d2 Definitive-endoderm","d3 Posterior-foregut","d6 Liver-bud","d12 hPSC-hep","hPSC-hep1", "hPSC-hep2", "hPSC-hep3","hPSC-hep4", "Huh7","HepG2","Primary-Hep")
+levels(alldata)
+ggsave("/home/rstudio/livertimecourse_umap.tiff", height = 7, width = 10)
+
+saveRDS(alldata, file = "/home/rstudio/livertimecourse.rds")
+```
+
+```{r}
+FeaturePlot(alldata, features = c("SOX2","TBXT","FZD8","SOX17","HHEX","TBX3","NR2F2","CDX2","PDX1"), min.cutoff = 0) 
+ggsave("/home/rstudio/livertimecourse_D1-D6.tiff", height = 7, width = 10)
+```
+
+```{r}
+FeaturePlot(alldata, features = c("POU5F1","NANOG","MIXL1","LEFTY1","GATA6","SOX17","HNF4A","OSR1","MKI67"), min.cutoff = 0) 
+ggsave("/home/rstudio/livertimecourse_D1-D6_2.tiff", height = 7, width = 10)
+```
+
+```{r}
+FeaturePlot(alldata, features = c("EOMES","SOX17","FZD8","GATA3","HHIP","SCEL","GREM1","DKK2","CYP26A1"), min.cutoff = 0)
+ggsave("/home/rstudio/livertimecourse_D1-D6_3.tiff", height = 7, width = 10)
+```
+
+```{r}
+FeaturePlot(alldata, features = c("FAH","CD200","ARG1","CPS1","ALB","ASS1","FGB","ASGR1","PDX1"),min.cutoff = 0.5, max.cutoff = 2) 
+ggsave("/home/rstudio/livertimecourse_CD200_scale0.5-2.tiff", height = 7, width = 10)
+```
+
+```{r}
+table(Idents(alldata), alldata$orig.ident)
+```
+
+```{r}
+FeaturePlot(alldata, features = c("ASGR1", "F2", "F5", "F7", "F8", "F10","F12","FGA","FGB")) 
+ggsave("/home/rstudio/livertimecourse_Tissuefactors.tiff", height = 7, width = 10)
+```
+
+```{r}
+FeaturePlot(alldata, features = c("GLUL", "F2", "SERPINA1", "PAH", "CYP2E1", "TTR","CYP3A7","CPS1","FGB")) 
+```
+
+```{r}
+ggsave("/home/rstudio/livertimecourse_TF.tiff", height = 5, width = 5)
+```
+
+```{r}
+FeaturePlot(alldata, features = c("SOX2", "TBXT", "SOX17","PROX1","HNF4A", "TBX3","CEBPA","CDX2","PDX1"), min.cutoff = 0.5, max.cutoff = 2)
+ggsave("/home/rstudio/livertimecourse_TF_scale0.5-3.tiff", height = 7, width = 10)
+```
+
+```{r}
+FeaturePlot(alldata, features = c("HK1", "HK2", "PKM2", "AGL", "PYGL", "GBE1", "G6PC", "PCK1", "FBP1"))
+```
+
+```{r}
+FeaturePlot(alldata, features = c("HK1", "HK2", "PKM2", "AGL",  "GALK1", "GALK2","GALE","GALT","GLUL"))
+```
+
+
+
+```{r}
+library(ggplot2)
+ggsave("/home/rstudio/livertimecourse_TF.tiff", height = 7, width = 10)
+```
+
+
+```{r}
+FeaturePlot(alldata, features = c("APOA1", "APOB", "APOC2","APOD", "APOE","AFP","NPC1")) 
+```
+
+```{r}
+#reordering clusters
+VlnPlot(alldata, features = c("SOX2","MIXL1","SOX17","HHEX","TBX3", "PDX1", "CDX2","CYP2E1","ALB", "FGB", "CPS1", "ASGR1"), pt.size=0)
+VlnPlot(alldata, features = c("SOX2","MIXL1","HNF4A","TBX3","AFP","ALB", "FGB", "CPS1", "ASGR1", "PDX1", "CDX2", "CYP2E1"), pt.size=0)
+levels(alldata)
+levels(alldata) <- c("hPSC", "d1 Primitive-streak", "d2 Definitive-endoderm","d3 Posterior-foregut","d6 Liver-bud","d12 hPSC-hep","hPSC-hep1", "hPSC-hep2", "hPSC-hep3","hPSC-hep4", "Huh7","HepG2","Primary-Hep")
+levels(alldata)
+
+VlnPlot(alldata, features = c("CD200"), pt.size=0, cols=c("#808080", "#ffd500","#ffa26b","#ff6b7e", "#ff0000","#dd7e28","#902525","#b92f2f","#b65708","#d65e5e","#11b461","#72bcd4","#654321"))
+ggsave("/home/rstudio/livertimecourse_violinCD200.tiff", height = 7, width = 9)
+
+
+
+```
+
+```{r}
+VlnPlot(alldata, features = c("NPC1"), pt.size=0, cols=c("#808080", "#ffd500","#ffa26b","#ff6b7e", "#ff0000","#dd7e28","#902525","#b92f2f","#b65708","#d65e5e","#11b461","#72bcd4","#654321"))
+ggsave("/home/rstudio/livertimecourse_NPC1.tiff", height = 7, width = 9)
+
+#features = c("HK1", "HK2", "PKM2", "AGL", "PYGL", "GBE1", "G6PC", "PCK1", "FBP1")
+#features = c("HK1", "HK2", "PKM2", "AGL",  "GALK1", "GALK2","GALE","GALT","GLUL")
+```
+
+
+```{r}
+VlnPlot(alldata, features = c("YWHAZ","ACTB","SOX2","NANOG","MIXL1","HAND1", "LMO2", "ETV2", "CDH5", "PECAM1", "CD34", "TBXT"), pt.size=0, cols=c("#696969", "Yellow", "#F79646", "#FF0000","#8064A2", "#660066", "Green"))
+CustomPalette(low = "white", high = "red", mid = NULL, k = 20)
+PurpleAndYellow(k = 50)
+```
+
+
+```{r}
+features <- c("YWHAZ","ACTB","SOX2","NANOG","MIXL1","HAND1", "LMO2", "ETV2", "CDH5", "PECAM1", "CD34", "TBXT")
+DotPlot(alldata, features = features) + RotatedAxis()
+```
+
+```{r}
+features <- c("NANOG","MIXL1","SOX17","HHEX","HNF4A", "PDX1", "CDX2","ALB", "FGB", "CPS1", "CYP3A5","SLC10A1","FABP","CYP2E1")
+library(RColorBrewer)
+DotPlot(alldata, features=features, cols = brewer.pal(1,'Reds')[2:15], dot.scale = 5, col.max = 15) + RotatedAxis()
+ggsave("/home/rstudio/livertimecourse.dotplot.tiff", width = 7, height=6)
+```
+
+```{r}
+features = c("HK1", "HK2", "PKM2", "AGL", "PYGL", "GBE1", "G6PC", "PCK1", "FBP1","GALK1", "GALK2","GALE","GALT","GLUL")
+DotPlot(alldata, features=features, cols = brewer.pal(1,'Reds')[2:15], dot.scale = 5, col.max = 15) + RotatedAxis()
+ggsave("/home/rstudio/livertimecourse-glucosemetabolic.dotplot.tiff", width = 7, height=6)
+```
+
+
+
+```{r}
+# find markers for every cluster compared to all remaining cells, report only the positive ones
+alldata.markers <- FindAllMarkers(alldata, only.pos = TRUE, min.pct = 0.50, logfc.threshold = 0.5)
+library(dplyr)
+alldata.markers %>% group_by(cluster) %>% top_n(n =30, wt = avg_log2FC)
+class(alldata.markers)
+install.packages("writexl")
+library(writexl)
+write_xlsx(x = alldata.markers, path = "/home/rstudio/livertimecourseSCT0.5pct0.5logfc.xlsx", col_names = TRUE)
+```
+
+```{r}
+# find all markers distinguishing cluster 9 from clusters 6 and 7
+clusterd18.markers <- FindMarkers(alldata, ident.1 = "hPSC-hep3", ident.2 = c("Huh7", "HepG2"), min.pct = 0.25)
+head(clusterd18.markers, n = 5)
+class(clusterd18.markers)
+write.csv(x = clusterd18.markers, "/home/rstudio/d18_compare_huh7_hepg2.csv", col.names = TRUE, row.names=TRUE, sep = "\t", dec = ".")
+          
+```
+
+```{r}
+# find all markers distinguishing cluster 9 from clusters 6 and 7
+clusterd18_phh.markers <- FindMarkers(alldata, ident.1 = "hPSC-hep3", ident.2 = c("Primary-Hep"), min.pct = 0.25)
+head(clusterd18_phh.markers, n = 5)
+write.csv(x = clusterd18_phh.markers, "/home/rstudio/d18_compare_phh.csv", col.names = TRUE, row.names=TRUE, sep = "\t", dec = ".")
+          
+```
+
+
+```{r}
+top5 <- alldata.markers %>% group_by(cluster) %>% top_n(n = 5, wt = avg_log2FC)
+top5
+```
+
+
+```{r}
+
+DoHeatmap(subset(alldata, downsample = 300), features = top5$gene, disp.min = -3, disp.max = 3, group.colors =c("#808080","#ffd500", "#ffa26b", "#ff6b7e","#ff0000","#dd7e28","#b92f2f","#b92f2f","#b92f2f","#11b461","#72bcd4","#654321")) +  scale_fill_gradient2( low = rev(c('#d1e5f0','#67a9cf','#2166ac')), mid = "white", high = rev(c('#b2182b','#ef8a62','#fddbc7')), midpoint = 0, guide = "colourbar", aesthetics = "fill")
+
+ggsave("/home/rstudio/heatmap_timecourseliver_TOP5SCT.tiff", height = 33, width = 24)
+```
+
+
+```{r}
+
+ggsave("/Users/stanfordkevin/Downloads/heatmap_liver.tiff", height = 16.5, width = 12.7)
+```
+
+```{r}
+
+transcriptionfactors<-c("POU5F1","SOX2","NANOG","MIXL1","EOMES","TBXT","MSX1","SOX17",
+"LEFTY1","LHX1","TBX3","NR2F2","RIPPLY3","HAMP","ATF5","NR2F1","ANKRD1","JAG1","TCF3","PEG3","HLF","NKX2-2","CEBPA","CEBPB","FOXA2","CREB3L3","PPARA","E2F8","KLF13","NR1H3","KLF15","NR1H4",
+"HNF1A","ONECUT2")
+DoHeatmap(subset(alldata, downsample = 300), assay="SCT", features = transcriptionfactors, disp.min = -3, disp.max = 3, group.colors =c("#808080","#ffd500", "#ffa26b", "#ff6b7e","#ff0000","#dd7e28","#b92f2f","#b92f2f","#b92f2f","#11b461","#72bcd4","#654321")) +  scale_fill_gradient2( low = rev(c('#d1e5f0','#67a9cf','#2166ac')), mid = "white", high = rev(c('#b2182b','#ef8a62','#fddbc7')), midpoint = 0, guide = "colourbar", aesthetics = "fill")
+
+levels(alldata)<-c("h1","d1","d2","d3","d6","d12","d18","d19","d20","hepg2","huh7","phh")
+ggsave("/home/rstudio/heatmap_timecourseliver_TOP5SCT.tiff", height = 33, width = 24)
+```
+
+
 

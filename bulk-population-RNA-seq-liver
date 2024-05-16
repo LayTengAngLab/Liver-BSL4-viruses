@@ -1,1 +1,243 @@
+library(tximport)
+library(readr)
+library(EnsDb.Hsapiens.v86)
+library(DESeq2)
+BiocManager::install("apeglm")
+library(apeglm)
+library("BiocParallel")
+register(MulticoreParam(4))
+library("pheatmap")
+library("tidyverse")
+library(edgeR)
+library(RColorBrewer)
 
+#set directory to location of TSV values----
+setwd("/Users/stanfordkevin/Box/Lay_Teng_Ang_Files/ANG_LAB_2019_2020/$LIVER/RESULTS/Lay_Teng/$PROM185_RNASEQ/Kallisto_liver/")
+files = list.files()
+
+#reorder files
+files = files[c(12:14,1:11)]
+
+#get sample names
+samples=gsub("_abundance.tsv","",files)
+names(files) = samples
+
+#make key to convert ensembl transcript ids to gene names
+edb = EnsDb.Hsapiens.v86
+tx = transcripts(edb, columns = c("tx_id", "gene_name"), return.type = "DataFrame")
+
+#import transcript abundance data
+txi = tximport(files, type = "kallisto", tx2gene = tx, ignoreTxVersion = TRUE)
+
+#set up metadata----
+cell_type = as.factor(c(rep("hesc",3), rep("d1",3), rep("d2",3),
+                        rep("d3",3), rep("d6",3), rep("d12",3), rep("d18",3)))
+
+#add metadata columns where a given cell type has a 1 and all other cell types have a 0
+comparisons = c("hesc", "d1", "d2", "d3", "d6", "d12","d18")
+meta_data = data.frame(sample = samples, cell_type = cell_type)
+meta_data[comparisons] = 0 #[] is similar to $ to pick columns
+for (i in 1:length(comparisons)){
+  meta_data[which(meta_data$cell_type==comparisons[i]),comparisons[i]]=1
+}
+
+meta_data[comparisons]=lapply(meta_data[comparisons], factor)
+class(meta_data)
+#general dds----
+dds <- DESeqDataSetFromTximport(txi,
+                                colData = meta_data,
+                                design = ~ cell_type)
+as.data.frame(colData(dds))
+dds<- DESeq(dds)
+class(dds)
+rld<-rlog(dds)
+
+#make DESeqDataSet for hesc comparison----
+dds_hesc = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ hesc)
+
+#run differential expression analysis with default parameters
+dds_hesc = DESeq(dds_hesc)
+resultsNames(dds_hesc)
+res_hesc = results(dds_hesc, contrast = c("hesc", "1", "0"), name="hesc_1_vs_0")
+res_hesc
+res_hesc_Sig <- subset(res_hesc, padj < 0.01)
+
+res_hesc_df <- as.data.frame(res_hesc_Sig) 
+res_hesc_tibble <- as.tibble(res_hesc_df, rownames = "geneID") 
+res_hesc_tibble<-subset(res_hesc_tibble, log2FoldChange>1)
+write.csv( as.data.frame(res_hesc_tibble), file="DESEQ2_top_hesc_p<0.01_tibble.csv" )
+res_hesc_top <- res_hesc_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_hesc_top
+head(res_hesc_top, 15)
+res_hesc_top80 <- head(res_hesc_top, 80)
+
+#make DESeqDataSet for d1 comparison----
+dds_d1 = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ d1)
+
+#run differential expression analysis with default parameters
+dds_d1 = DESeq(dds_d1)
+res_d1 = results(dds_d1, contrast = c("d1", "1", "0"))
+res_d1
+res_d1_Sig <- subset(res_d1, padj < 0.01)
+
+res_d1_df <- as.data.frame(res_d1_Sig) 
+res_d1_tibble <- as.tibble(res_d1_df, rownames = "geneID") 
+res_d1_tibble<-subset(res_d1_tibble, log2FoldChange>1)
+write.csv( as.data.frame(res_d1_tibble), file="DESEQ2_top_d1_p<0.01_tibble.csv" )
+res_d1_top <- res_d1_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_d1_top
+head(res_d1_top, 15)
+res_d1_top80 <- head(res_d1_top,80)
+
+#make DESeqDataSet for d2 comparison----
+dds_d2 = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ d2)
+
+#run differential expression analysis with default parameters
+dds_d2 = DESeq(dds_d2)
+res_d2 = results(dds_d2, contrast = c("d2", "1", "0"))
+res_d2
+res_d2_Sig <- subset(res_d2, padj < 0.01)
+res_d2_df <- as.data.frame(res_d2_Sig) 
+res_d2_tibble <- as.tibble(res_d2_df, rownames = "geneID") 
+res_d2_tibble<-subset(res_d2_tibble, log2FoldChange>1)
+write.csv( as.data.frame(res_d2_tibble), file="DESEQ2_top_d2_p<0.01_tibble.csv" )
+res_d2_top <- res_d2_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_d2_top
+head(res_d2_top, 30)
+res_d2_top50 <- head(res_d2_top,50)
+
+#make DESeqDataSet for d3 comparison----
+dds_d3 = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ d3)
+
+#run differential expression analysis with default parameters
+dds_d3 = DESeq(dds_d3)
+res_d3 = results(dds_d3, contrast = c("d3", "1", "0"))
+res_d3
+res_d3_Sig <- subset(res_d3, padj < 0.01)
+res_d3_df <- as.data.frame(res_d3_Sig) 
+res_d3_tibble <- as.tibble(res_d3_df, rownames = "geneID") 
+res_d3_tibble<-subset(res_d3_tibble, log2FoldChange>1)
+write.csv( as.data.frame(res_d3_tibble), file="DESEQ2_top_d3_p<0.01_tibble.csv" )
+res_d3_top <- res_d3_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_d3_top
+head(res_d3_top, 30)
+res_d3_top80 <- head(res_d3_top,80)
+
+#make DESeqDataSet for d6 comparison----
+dds_d6 = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ d6)
+
+#run differential expression analysis with default parameters
+dds_d6 = DESeq(dds_d6)
+res_d6 = results(dds_d6, contrast = c("d6", "1", "0"))
+res_d6
+
+res_d6_Sig <- subset(res_d6, padj < 0.01)
+res_d6_df <- as.data.frame(res_d6_Sig) 
+res_d6_tibble <- as.tibble(res_d6_df, rownames = "geneID")
+res_d6_tibble<-subset(res_d6_tibble, log2FoldChange>1)
+write.csv( as.data.frame(res_d6_tibble), file="DESEQ2_top_d6_p<0.01_tibble.csv" )
+res_d6_top <- res_d6_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_d6_top
+head(res_d6_top, 15)
+res_d6_top80 <- head(res_d6_top,80)
+
+#make DESeqDataSet for d12 comparison----
+dds_d12 = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ d12)
+
+#run differential expression analysis with default parameters
+dds_d12 = DESeq(dds_d12)
+res_d12 = results(dds_d12, contrast = c("d12", "1", "0"))
+res_d12
+res_d12_Sig <- subset(res_d12, padj < 0.01)
+res_d12_df <- as.data.frame(res_d12_Sig) 
+res_d12_tibble <- as.tibble(res_d12_df, rownames = "geneID")
+res_d12_tibble<-subset(res_d12_tibble, log2FoldChange>1)
+write.csv( as.data.frame(res_d12_tibble), file="DESEQ2_top_d12_p<0.01_tibble.csv" )
+
+res_d12_top <- res_d12_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_d12_top
+head(res_d12_top, 20)
+class(res_d12_top)
+write.csv( as.data.frame(res_d12_top), file="DESEQ2_top_d12_p<0.01.csv" )
+res_d12_top80 <- head(res_d12_top,80)
+
+#make DESeqDataSet for d18 comparison----
+dds_d18 = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ d18)
+
+#run differential expression analysis with default parameters
+dds_d18 = DESeq(dds_d18)
+res_d18 = results(dds_d18, contrast = c("d18", "1", "0"))
+res_d18
+res_d18_Sig <- subset(res_d18, padj < 0.01)
+res_d18_df <- as.data.frame(res_d18_Sig) 
+res_d18_tibble <- as.tibble(res_d18_df, rownames = "geneID")
+res_d18_tibble<-subset(res_d18_tibble, log2FoldChange>1)
+write.csv( as.data.frame(res_d18_tibble), file="DESEQ2_top_d18_p<0.01_tibble.csv" )
+
+res_d18_top <- res_d18_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_d18_top
+head(res_d18_top, 20)
+class(res_d18_top)
+write.csv( as.data.frame(res_d18_top), file="DESEQ2_top_d18_p<0.01.csv" )
+res_d18_top80 <- head(res_d18_top,80)
+
+#plot heatmap for all comparison---- 
+
+rownames<- c(res_hesc_top$geneID, res_d1_top$geneID, res_d2_top$geneID, 
+             res_d3_top$geneID, res_d6_top$geneID, res_d12_top$geneID,
+             res_d18_top$geneID)
+dds
+colData(dds)
+ddsColl <- collapseReplicates(dds, dds$cell_type, renameCols=FALSE)
+ddsColl
+
+colData(ddsColl)
+ddsColl <- ddsColl[,order(ddsColl$cell_type)]
+rldColl<-rlog(ddsColl)
+?brewer.pal
+tiff(file="DESEQ_liver_RNASEQ_heatmap_top3.tiff")
+pheatmap(assay(rld)[rownames,], scale="row", fontsize = 20, cluster_cols = FALSE, 
+         show_rownames = F, cluster_rows = FALSE, col= colorRampPalette(c("navy", "white", "firebrick3"))(255))
+dev.off()
+pheatmap(assay(rldColl)[rownames,],
+         scale="row", fontsize = 20, cluster_cols = F, show_rownames = F,
+         border_color = "grey60", cluster_rows = FALSE, col= colorRampPalette(colors = c("#3b3bff", "#000014", "#ff0000"))(255))
+pheatmap(assay(rld)[rownames,], 
+         scale="row", fontsize = 20, cluster_cols = F, show_rownames = F,
+         border_color = "grey60", cluster_rows = FALSE, col= colorRampPalette(colors = c("#3b3bff", "#000014", "#ff0000"))(255))
+pheatmap(assay(rld)[rownames,], scale="row", fontsize = 2, cluster_cols = FALSE, show_rownames = T,
+         cluster_rows = FALSE, col= colorRampPalette(colors = c("#1E90FF", "white", "#ff0000"))(255))
+
+
+#sample
+genes <- c("POU5F1","NANOG","SOX2","MIXL1","T","WNT3A",
+           "EOMES","SOX17","HNF4A","TBX3","AFP",
+           "DKK1","BMP6","ALB","G6PC","APOA4", "GSTA1")
+mat <- assay(rld)[genes, ]
+mat <- mat - rowMeans(mat)
+
+anno <- as.data.frame(colData(rld)[c("cell_type")])
+pheatmap(mat, annotation_col = anno)
+pheatmap(assay(rld)[rownames,], scale="row", fontsize = 5, cluster_cols = FALSE, show_rownames = T,
+         cluster_rows = FALSE, col= colorRampPalette(colors = c("#1E90FF", "#000014", "#ff0000"))(255))
+library(ggplot2)
+pdf(file="DESEQ_liver_RNASEQ_heatmap_top_2.pdf")
+pheatmap(assay(rld)[rownames,], scale="row", fontsize = 5, cluster_cols = FALSE, show_rownames = T,
+         cluster_rows = FALSE, col= colorRampPalette(colors = c("#1E90FF", "#000014", "#ff0000"))(255))
+dev.off()
+
+ggsave("DESEQ_liver_RNASEQ_heatmap_top.tiff", plot=last_plot(), height = 5, width =1)

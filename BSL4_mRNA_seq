@@ -1,0 +1,167 @@
+library(tximport)
+library(readr)
+library(EnsDb.Hsapiens.v86)
+library(DESeq2)
+BiocManager::install("apeglm")
+library(apeglm)
+library("BiocParallel")
+register(MulticoreParam(4))
+library("pheatmap")
+library("tidyverse")
+library(edgeR)
+library(RColorBrewer)
+library(ggplot2)
+
+#set directory to location of TSV values----
+setwd("/Users/stanfordkevin/Box/Lay_Teng_Ang_Files/ANG_LAB_2022/$LIVER/Lay_Teng/BSL4_liver_RNASEQ/liverbsl40223_kallisto_out2_all/")
+files = list.files()
+#reorder files
+files = files[c(49,50,51,37,38,39,40,41,42,43,44,45,46,47,48,52,53,54,13,
+                14,15,1,2,3,4,5,6,7,8,9,10,11,12,16,17,18,31,32,33,19,20,
+                21,22,23,24,25,26,27,28,29,30,34,35,36,64,65,66,55,56,57,
+                58,59,60,61,62,63)]
+
+#get sample names
+samples=gsub("_abundance.tsv","",files)
+names(files) = samples
+
+#make key to convert ensembl transcript ids to gene names
+edb = EnsDb.Hsapiens.v86
+tx = transcripts(edb, columns = c("tx_id", "gene_name"), return.type = "DataFrame")
+
+#import transcript abundance data
+txi = tximport(files, type = "kallisto", tx2gene = tx, ignoreTxVersion = TRUE)
+
+
+#set up metadata----
+cell_type = as.factor(c(rep("mock6h",3), rep("mock1d",3),rep("mock2d",3), 
+                        rep("mock3d",3), rep("mock5d",3),rep("mock7d",3), 
+                        rep("ebov6h",3), rep("ebov1d",3), rep("ebov2d",3), 
+                        rep("ebov3d",3), rep("ebov5d",3), rep("ebov7d",3), 
+                        rep("lasv6h",3), rep("lasv1d",3), rep("lasv2d",3), 
+                        rep("lasv3d",3), rep("lasv5d",3),rep("lasv7d",3), 
+                        rep("senv6h",3), rep("senv1d",3),
+                        rep("senv2d",3), rep("senv3d",3)))
+
+#add metadata columns where a given cell type has a 1 and all other cell types have a 0
+comparisons = c("mock6h","mock1d","mock2d","mock3d","mock5d","mock7d",
+                "ebov6h","ebov1d", "ebov2d", "ebov3d", "ebov5d", "ebov7d",
+                "lasv6h","lasv1d","lasv2d", "lasv3d", "lasv5d", "lasv7d",
+                "senv6h","senv1d","senv2d","senv3d")
+
+meta_data = data.frame(sample = samples, cell_type = cell_type)
+meta_data[comparisons] = 0 #[] is similar to $ to pick columns
+for (i in 1:length(comparisons)){
+  meta_data[which(meta_data$cell_type==comparisons[i]),comparisons[i]]=1
+}
+
+meta_data[comparisons]=lapply(meta_data[comparisons], factor)
+class(meta_data)
+#general dds----
+dds <- DESeqDataSetFromTximport(txi,
+                                colData = meta_data,
+                                design = ~ cell_type)
+as.data.frame(colData(dds))
+dds<- DESeq(dds)
+class(dds)
+rld<-rlog(dds)
+
+class(rld)
+library(writexl)
+class(assays(rld))
+write.table(x=as.data.frame(assays(rld)), file="Liverbsl4-RNAseq-rld.csv")
+
+#make DESeqDataSet for ebov comparison----
+dds_ebov3d = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ ebov3d)
+
+#run differential expression analysis with default parameters
+dds_ebov3d = DESeq(dds_ebov3d)
+resultsNames(dds_ebov3d)
+res_ebov3d = results(dds_ebov3d, contrast = c("ebov3d", "1", "0"), name="ebov3d_1_vs_0")
+res_ebov3d
+res_ebov3d_Sig <- subset(res_ebov3d, padj < 0.1)
+res_ebov3d_Sig <- subset(res_ebov3d_Sig, log2FoldChange > 1)
+res_ebov3d_df <- as.data.frame(res_ebov3d_Sig) 
+res_ebov3d_tibble <- as_tibble(res_ebov3d_df, rownames = "geneID") 
+write.csv( as.data.frame(res_ebov3d_tibble), file="DESEQ2_top_ebov3d_p<0.1_tibble.csv" )
+res_ebov3d_top <- res_ebov3d_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_ebov3d_top
+head(res_ebov3d_top, 15)
+res_ebov3d_top50 <- head(res_ebov3d_top, 50)
+
+
+#make DESeqDataSet for lasv comparison----
+dds_lasv3d = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ lasv3d)
+
+#run differential expression analysis with default parameters
+dds_lasv3d = DESeq(dds_lasv3d)
+resultsNames(dds_lasv3d)
+res_lasv3d = results(dds_lasv3d, contrast = c("lasv3d", "1", "0"), name="lasv3d_1_vs_0")
+res_lasv3d
+res_lasv3d_Sig <- subset(res_lasv3d, padj < 0.1)
+res_lasv3d_Sig <- subset(res_lasv3d_Sig, log2FoldChange > 1)
+res_lasv3d_df <- as.data.frame(res_lasv3d_Sig) 
+res_lasv3d_tibble <- as_tibble(res_lasv3d_df, rownames = "geneID") 
+write.csv( as.data.frame(res_lasv3d_tibble), file="DESEQ2_top_lasv3d_p<0.1_tibble.csv" )
+res_lasv3d_top <- res_lasv3d_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_lasv3d_top
+head(res_lasv3d_top, 15)
+res_lasv3d_top50 <- head(res_lasv3d_top, 50)
+
+
+#make DESeqDataSet for mock comparison----
+dds_mock3d = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ mock3d)
+
+#run differential expression analysis with default parameters
+dds_mock3d = DESeq(dds_mock3d)
+resultsNames(dds_mock3d)
+res_mock3d = results(dds_mock3d, contrast = c("mock3d", "1", "0"), name="mock3d_1_vs_0")
+res_mock3d
+res_mock3d_Sig <- subset(res_mock3d, padj < 0.1)
+res_mock3d_Sig <- subset(res_mock3d, ,log2FoldChange > 1)
+res_mock3d_df <- as.data.frame(res_mock3d_Sig) 
+res_mock3d_tibble <- as_tibble(res_mock3d_df, rownames = "geneID") 
+write.csv( as.data.frame(res_mock3d_tibble), file="DESEQ2_top_mock3d_p<0.1_tibble.csv" )
+res_mock3d_top <- res_mock3d_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_mock3d_top
+head(res_mock3d_top, 15)
+res_mock3d_top50 <- head(res_mock3d_top, 50)
+
+#make DESeqDataSet for mock comparison----
+dds_senv3d = DESeqDataSetFromTximport(txi, colData = meta_data, design = ~ senv3d)
+
+#run differential expression analysis with default parameters
+dds_senv3d = DESeq(dds_senv3d)
+resultsNames(dds_senv3d)
+res_senv3d = results(dds_senv3d, contrast = c("senv3d", "1", "0"), name="senv3d_1_vs_0")
+res_senv3d
+res_senv3d_Sig <- subset(res_senv3d, padj < 0.1)
+res_senv3d_Sig <- subset(res_senv3d, log2FoldChange > 1)
+res_senv3d_df <- as.data.frame(res_senv3d_Sig) 
+res_senv3d_tibble <- as_tibble(res_senv3d_df, rownames = "geneID") 
+write.csv( as.data.frame(res_senv3d_tibble), file="DESEQ2_top_senv3d_p<0.1_tibble.csv" )
+res_senv3d_top <- res_senv3d_tibble %>% 
+  dplyr::arrange(-log2FoldChange) %>% #to ensure no conflict in function
+  dplyr::select(geneID)
+res_senv3d_top
+head(res_senv3d_top, 15)
+res_senv3d_top50 <- head(res_senv3d_top, 50)
+
+rownames<- c(res_mock3d_top50$geneID, res_lasv3d_top50$geneID, res_ebov3d_top50$geneID, res_senv3d_top50$geneID)
+dds
+colData(dds)
+ddsColl <- collapseReplicates(dds, dds$cell_type, renameCols=FALSE)
+ddsColl
+
+colData(ddsColl)
+ddsColl <- ddsColl[,order(ddsColl$cell_type)]
+rldColl<-rlog(ddsColl)
+
+pheatmap(assay(rld)[rownames,], scale="row", fontsize = 5, cluster_cols = FALSE, cluster_rows = FALSE, col= colorRampPalette( rev(brewer.pal(11, "RdBu")) )(255))
+

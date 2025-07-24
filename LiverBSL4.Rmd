@@ -1,0 +1,140 @@
+```{r}
+# Ouyang et al. ShinyCell: Simple and sharable visualisation of single-cell gene expression data. Bioinformatics, doi:10.1093/bioinformatics/btab209
+
+#First, users can run the following code to check if the packages required by ShinyCell exist and install them if required:
+
+reqPkg = c("data.table", "Matrix", "hdf5r", "reticulate", "ggplot2", 
+           "gridExtra", "glue", "readr", "RColorBrewer", "R.utils", "Seurat")
+newPkg = reqPkg[!(reqPkg %in% installed.packages()[,"Package"])]
+if(length(newPkg)){install.packages(newPkg)}
+
+reqPkg = c("shiny", "shinyhelper", "data.table", "Matrix", "DT", "hdf5r", 
+           "reticulate", "ggplot2", "gridExtra", "magrittr", "ggdendro")
+newPkg = reqPkg[!(reqPkg %in% installed.packages()[,"Package"])]
+if(length(newPkg)){install.packages(newPkg)}
+
+```
+
+```{r}
+library(Seurat)
+remotes::install_version("Seurat", version = "4.3.0")
+library(Seurat)
+packageVersion("Seurat") 
+library(ShinyCell)
+devtools::install_github("thomasp85/patchwork")
+library(patchwork)
+devtools::install_github("SGDDNB/ShinyCell")
+install.packages('rsconnect')     # package to interface shiny apps
+library(rsconnect)
+install.packages("remotes")
+library(remotes)
+remotes::install_github("s-u/base64enc") #version 0.1-4
+library(base64enc)
+install.packages("Matrix")
+```
+
+```{r}
+getExampleData()                       # Download example dataset (~200 MB)
+
+seu <-readRDS("/Users/layteng/Library/CloudStorage/Box-Box/Lay_Teng_Ang_Files/ANG_LAB_2019_2020/MANUSCRIPTS/Liver_Manuscript/Liver_latest/alldata_ALB>0.5_CHGA<0.25.rds")
+
+scConf = createConfig(seu)
+showLegend(scConf)
+
+showOrder(scConf)
+?modMetaName
+scConf = modMetaName(scConf, 
+                     meta.to.mod = c("nUMI", "nGene", "pctMT", "pctHK"), 
+                     new.name = c("No. UMIs", "No. detected genes",
+                                  "% MT genes", "% HK genes"))
+
+#delete metadata
+scConf = delMeta(scConf, c("RNA_snn_res.0.1"))
+scConf = delMeta(scConf, c("orig.ident"))
+scConf = delMeta(scConf, c("sample"))
+
+#scConf = delMeta(scConf, c("seurat_clusters"))
+
+
+showLegend(scConf)
+
+checkConfig(scConf, seu)
+
+citation = list(
+  author  = "Joseph B. Prescott, Isabel von Creytz1, Kevin J. Liu, Oscar Qing Hong Xie, Jamie Brett, Erique Castro, Shaoyan Zhang, Emily Rae Dwyer, Nicole Min Qian Pek, Angelika Lander, Marcel Bokelmann, Chad S. Clancy, Rebecca Rosenke, Sawan Kumar Jha, Pang Wei Koh, Henry Yang7, César G. Albariño, Bing Lim, Kristy Red-Horse, Irving L. Weissman, Heinz Feldmann, Marcia C. Haigis, Kyle M. Loh, Lay Teng Ang",
+  title   = "Metabolic selection of human stem cell-derived hepatocytes and single-cell transcriptomic atlas reveals effects of BSL4 viruses",
+  journal = "XX",
+  volume  = "XX",
+  page    = "XX",
+  year    = "2025", 
+  doi     = "XX",
+  link    = "https://www.XX")
+
+library(Seurat)
+
+# Modify colours and labels
+
+
+scConf = modColours(scConf, meta.to.mod = "orig.ident", 
+                    new.colours= c("#AC75AB","#AC75AB", "#721271","#721271","#FD7E76","#FD7E76","#FD0C01","#FD0C01",
+                       "#D9D9D9",  "#D9D9D9", "#7D7D7D","#7D7D7D","#92CF50","#92CF50", 
+                        "#32A02D","#32A02D"))
+
+
+
+scConf = modLabels(scConf, meta.to.mod = "orig.ident", 
+                   new.labels = c(  "Ebola_MOI0.25_1day_R1","Ebola_MOI0.25_1day_R2",
+                                    "Ebola_MOI0.25_2day_R1","Ebola_MOI0.25_2day_R2",
+                                    "Ebola_MOI0.75_1day_R1","Ebola_MOI0.75_1day_R2",
+                                    "Ebola_MOI0.75_2day_R1","Ebola_MOI0.75_2day_R2",
+                                    "Mock_1day_R1","Mock_1day_R2",
+                                    "Mock_2day_R1","Mock_2day_R2",
+                                    "Sendai_1day_R1","Sendai_1day_R2",
+                                    "Sendai_2day_R1", "Sendai_2day_R2"))
+
+DimPlot(seu, group.by="orig.ident",cols= 
+                      c("#AC75AB","#AC75AB", "#721271","#721271","#FD7E76","#FD7E76", "#FD0C01",
+                        "#FD0C01","#D9D9D9","#D9D9D9", "#7D7D7D","#7D7D7D", "#92CF50","#92CF50", 
+                        "#32A02D","#32A02D"))
+
+
+showLegend(scConf)
+
+#open server.R in Rstudio, click on RunApp, set working directory
+#https://htmlpreview.github.io/?https://github.com/SGDDNB/ShinyCell/blob/master/docs/4cloud.html
+
+```
+```{r}
+
+# add an empty list if the slot is missing
+if (!"images" %in% slotNames(seu)) {
+  slot(seu, "images") <- list()   # create an empty images slot
+}
+
+validObject(seu)                  # check that the object is now valid
+
+names(seu@assays)
+Assays(seu)
+"images" %in% slotNames(seu)
+length(VariableFeatures(seu, assay = "RNA"))
+validObject(scConf)
+seu <- FindVariableFeatures(seu, assay = "RNA", nfeatures = 2000)
+
+makeShinyApp(seu, scConf, gene.mapping = TRUE, gex.assay = "RNA", gex.slot = c("data","counts"), shiny.title = "Metabolic selection of human stem cell-derived hepatocytes and single-cell transcriptomic atlas reveals effects of BSL4 viruses",shiny.dir = "/Users/layteng/Library/CloudStorage/Box-Box/Lay_Teng_Ang_Files/ANG_LAB_2019_2020/MANUSCRIPTS/Liver_Manuscript/Liver_latest/SingleCell_Ebola_Human_Liver/", shiny.footnotes = citation,default.gene1 = "ALB", default.gene2 = "ATF3",default.multigene = c("TTR","FGA","IFIT1","IFIT2","PPP1R15A", "DDIT3", "GLUD1","GATM","HPX","CXCL8","GDF15","CCL20")) 
+
+```
+
+
+```{r}
+rsconnect::setAccountInfo(name='anglab2025',
+			  token='59A8DD5ACF65A96ABC80FD613096F91C',
+			  secret='+jiSA/r3ejE2c+56AeycPL6fmC5xjycACRrZB2rI')
+getOption("rsconnect.max.bundle.size")
+options(rsconnect.max.bundle.size = 10076168880)
+
+setwd("/Users/layteng/Library/CloudStorage/Box-Box/Lay_Teng_Ang_Files/ANG_LAB_2019_2020/MANUSCRIPTS/Liver_Manuscript/Liver_latest/")
+rsconnect::deployApp("/Users/layteng/Library/CloudStorage/Box-Box/Lay_Teng_Ang_Files/ANG_LAB_2019_2020/MANUSCRIPTS/Liver_Manuscript/Liver_latest/SingleCell_Ebola_Human_Liver/")
+
+sessionInfo()
+```
+
